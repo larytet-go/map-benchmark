@@ -10,3 +10,8 @@ Usage
 In a separate terminal
 
     while [ 1 ];do echo -en "\\033[0;0H";curl http://127.0.0.1:8081/stat;sleep 0.3;done;
+
+My machine 
+
+    $ go version
+    go version go1.12.4 linux/amd64
