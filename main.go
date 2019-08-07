@@ -69,7 +69,9 @@ type systemParams struct {
 type arrayFlags []string
 
 func getParams() (systemParams, error) {
-	flag.Parse()
+	flag.Set("logtostderr", "true")
+	flag.Set("stderrthreshold", "INFO")
+
 	listenAddress := flag.String("listenAddress", ":8081", "HTTP interface")
 	bigMapSize := flag.Int("bigMapSize", 10*1000*1000, "Size of the map")
 
