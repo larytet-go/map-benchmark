@@ -1,6 +1,7 @@
 
 
-Demos GC impact on the HTTP server latency
+Demos GC impact on the HTTP server latency.
+
 Usage 
 
     go run .
