@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -56,9 +57,18 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 		fmt.Fprintf(response, ra.rate.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
 		fmt.Fprintf(response, "\n")
 		fmt.Fprintf(response, ra.latency.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
+		fmt.Fprintf(response, "\n")
+		var memStats runtime.MemStats
+		runtime.ReadMemStats(&memStats)
+		fmt.Fprintf(response, "Alloc = %v MiB", bToMb(memStats.Alloc))
+
 	}
 	latency := time.Since(timestamp)
 	ra.latency.Add(uint64(latency))
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
 }
 
 type systemParams struct {
