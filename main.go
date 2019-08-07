@@ -26,9 +26,10 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 	switch urlPath {
 	// Try	while [ 1 ];do echo -en "\\033[0;0H";curl http://127.0.0.1:8081/stat;sleep 0.3;done;
 	case "statistics", "", "stat":
-		fmt.Fprintf(response, ra.rate.Sprintf("%-28s:\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
 		fmt.Fprintf(response, "\n")
-		fmt.Fprintf(response, ra.latency.Sprintf("%-28s:\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
+		fmt.Fprintf(response, ra.rate.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
+		fmt.Fprintf(response, "\n")
+		fmt.Fprintf(response, ra.latency.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
 	}
 	latency := time.Since(timestamp)
 	ra.latency.Add(uint64(latency))
