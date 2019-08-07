@@ -92,6 +92,7 @@ func getParams() (systemParams, error) {
 }
 
 func populateMap(bigMap *syncmap.Map, count int) {
+	bigMap.Store("magic", "key")
 	for i := 0; i < count; i++ {
 		bigMap.Store(fmt.Sprintf("%d", rand.Uint64()), fmt.Sprintf("%d", rand.Uint64()))
 	}
