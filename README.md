@@ -4,7 +4,7 @@ Demos GC impact on the HTTP server latency.
 
 Usage 
 
-    go run .
+    GODEBUG=gctrace=1,schedtrace=500 go run .
     httperf --server localhost --port 8081 --uri "/query?key=magic"  --num-calls 10000000  --verbose 
 
 In a separate terminal
