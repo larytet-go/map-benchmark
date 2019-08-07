@@ -97,7 +97,11 @@ func main() {
 		rate:    accumulator.New("rate", 60),
 		latency: accumulator.New("latency", 60),
 	}
-	populateMap(ra.bigMap, params.bigMapSize)
+	go func() {
+		glog.Infof("Populating map %d entries", params.bigMapSize)
+		populateMap(ra.bigMap, params.bigMapSize)
+		glog.Infof("Map populated")
+	}()
 
 	srv := &http.Server{
 		Addr:    params.listenAddress,
