@@ -100,7 +100,6 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 	case "sample":
 		ra.serveHTTPSample(response, request)
 	}
-
 }
 
 type systemParams struct {
@@ -164,7 +163,6 @@ func startTimersAndFriends(ra *restAPI) {
 			ra.statistics.timer100ms++
 		}
 	}()
-
 }
 
 func main() {
