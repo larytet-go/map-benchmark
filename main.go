@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -94,9 +95,11 @@ func getParams() (systemParams, error) {
 func populateMap(bigMap *syncmap.Map, count int) {
 	bigMap.Store("magic", "key")
 	for i := 0; i < count; i++ {
+		key := fmt.Sprintf("%d", rand.Uint64())
+		value := bytes.NewBufferString(key)
 		// Force the compiler to allocate data
 		// I could do faster with []byte instead of String
-		bigMap.Store(fmt.Sprintf("%d", rand.Uint64()), fmt.Sprintf("%d", rand.Uint64()))
+		bigMap.Store(key, value.Bytes())
 	}
 }
 
