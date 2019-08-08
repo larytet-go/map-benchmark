@@ -20,7 +20,8 @@ import (
 type restAPI struct {
 	params     systemParams
 	bigMap     *syncmap.Map
-	rate       *accumulator.Accumulator
+	rateQuery  *accumulator.Accumulator
+	rateStats  *accumulator.Accumulator
 	latency    *accumulator.Accumulator
 	statistics struct {
 		timer100ms uint64
@@ -31,10 +32,10 @@ type restAPI struct {
 
 func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	timestamp := time.Now()
-	ra.rate.Add(1)
 	urlPath := strings.ToLower(request.URL.Path[1:])
 	switch urlPath {
 	case "query":
+		ra.rateQuery.Add(1)
 		key := request.URL.Query().Get("key")
 		if key != "" {
 			if valueIfc, ok := ra.bigMap.Load(key); ok {
@@ -60,9 +61,12 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 
 		// Try	while [ 1 ];do echo -en "\\033[0;0H";curl http://127.0.0.1:8081/stat;sleep 0.3;done;
 	case "statistics", "", "stat":
+		ra.rateStats.Add(1)
 		fmt.Fprintf(response, goutils.SprintfStructure(ra.statistics, 5, "%-20s %14v ", []string{}))
 		fmt.Fprintf(response, "\n")
-		fmt.Fprintf(response, ra.rate.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
+		fmt.Fprintf(response, ra.rateQuery.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
+		fmt.Fprintf(response, "\n")
+		fmt.Fprintf(response, ra.rateStats.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
 		fmt.Fprintf(response, "\n")
 		fmt.Fprintf(response, ra.latency.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
 		fmt.Fprintf(response, "\n")
@@ -118,10 +122,11 @@ func main() {
 		return
 	}
 	ra := restAPI{
-		params:  params,
-		bigMap:  &syncmap.Map{},
-		rate:    accumulator.New("rate", 60),
-		latency: accumulator.New("latency", 60),
+		params:    params,
+		bigMap:    &syncmap.Map{},
+		rateQuery: accumulator.New("rateQuery", 60),
+		rateStats: accumulator.New("rateStats", 60),
+		latency:   accumulator.New("latency", 60),
 	}
 	go func() {
 		glog.Infof("Populating map %d entries", params.bigMapSize)
@@ -138,7 +143,8 @@ func main() {
 		for {
 			<-ticker.C
 			ra.latency.Tick()
-			ra.rate.Tick()
+			ra.rateQuery.Tick()
+			ra.rateStats.Tick()
 			ra.statistics.tick1s++
 		}
 	}()
