@@ -25,7 +25,7 @@ type restAPI struct {
 	statistics struct {
 		timer100ms uint64
 		tick1s     uint64
-		sleep100ms uint64
+		sleep10ms  uint64
 	}
 }
 
@@ -157,7 +157,7 @@ func main() {
 	glog.Infof("Listen on interface %s", srv.Addr)
 
 	for {
-		time.Sleep(100 * time.Millisecond)
-		ra.statistics.sleep100ms++
+		time.Sleep(10 * time.Millisecond)
+		ra.statistics.sleep10ms++
 	}
 }
