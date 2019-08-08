@@ -69,7 +69,7 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 		fmt.Fprintf(response, "\n")
 		fmt.Fprintf(response, ra.rateStats.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
 		fmt.Fprintf(response, "\n")
-		fmt.Fprintf(response, ra.rateTightLoop.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
+		fmt.Fprintf(response, ra.rateTightLoop.Sprintf("%-28s (iterations/s):\n%v\n", "%-28sNo data in the last %d seconds\n", "%8d ", 16, 1, false))
 		fmt.Fprintf(response, "\n")
 		fmt.Fprintf(response, ra.latency.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
 		fmt.Fprintf(response, "\n")
@@ -132,10 +132,15 @@ func main() {
 		rateTightLoop: accumulator.New("rateTightLoop", 60),
 		latency:       accumulator.New("latency", 60),
 	}
+
 	go func() {
 		glog.Infof("Populating map %d entries", params.bigMapSize)
 		populateMap(ra.bigMap, params.bigMapSize)
 		glog.Infof("Map populated")
+		for {
+			ra.rateTightLoop.Add(1)
+			time.Sleep(1 * time.Microsecond)
+		}
 	}()
 
 	srv := &http.Server{
@@ -151,13 +156,6 @@ func main() {
 			ra.rateStats.Tick()
 			ra.rateTightLoop.Tick()
 			ra.statistics.tick1s++
-		}
-	}()
-
-	go func() {
-		for {
-			ra.rateTightLoop.Add(1)
-			time.Sleep(1 * time.Microsecond)
 		}
 	}()
 
