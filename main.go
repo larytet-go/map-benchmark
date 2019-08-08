@@ -18,12 +18,13 @@ import (
 )
 
 type restAPI struct {
-	params     systemParams
-	bigMap     *syncmap.Map
-	rateQuery  *accumulator.Accumulator
-	rateStats  *accumulator.Accumulator
-	latency    *accumulator.Accumulator
-	statistics struct {
+	params        systemParams
+	bigMap        *syncmap.Map
+	rateQuery     *accumulator.Accumulator
+	rateStats     *accumulator.Accumulator
+	rateTightLoop *accumulator.Accumulator
+	latency       *accumulator.Accumulator
+	statistics    struct {
 		timer100ms uint64
 		tick1s     uint64
 		sleep10ms  uint64
@@ -67,6 +68,8 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 		fmt.Fprintf(response, ra.rateQuery.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
 		fmt.Fprintf(response, "\n")
 		fmt.Fprintf(response, ra.rateStats.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
+		fmt.Fprintf(response, "\n")
+		fmt.Fprintf(response, ra.rateTightLoop.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
 		fmt.Fprintf(response, "\n")
 		fmt.Fprintf(response, ra.latency.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
 		fmt.Fprintf(response, "\n")
@@ -122,11 +125,12 @@ func main() {
 		return
 	}
 	ra := restAPI{
-		params:    params,
-		bigMap:    &syncmap.Map{},
-		rateQuery: accumulator.New("rateQuery", 60),
-		rateStats: accumulator.New("rateStats", 60),
-		latency:   accumulator.New("latency", 60),
+		params:        params,
+		bigMap:        &syncmap.Map{},
+		rateQuery:     accumulator.New("rateQuery", 60),
+		rateStats:     accumulator.New("rateStats", 60),
+		rateTightLoop: accumulator.New("rateTightLoop", 60),
+		latency:       accumulator.New("latency", 60),
 	}
 	go func() {
 		glog.Infof("Populating map %d entries", params.bigMapSize)
@@ -145,7 +149,15 @@ func main() {
 			ra.latency.Tick()
 			ra.rateQuery.Tick()
 			ra.rateStats.Tick()
+			ra.rateTightLoop.Tick()
 			ra.statistics.tick1s++
+		}
+	}()
+
+	go func() {
+		for {
+			ra.rateTightLoop.Add(1)
+			time.Sleep(1 * time.Microsecond)
 		}
 	}()
 
