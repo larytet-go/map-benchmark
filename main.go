@@ -75,9 +75,9 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 		fmt.Fprintf(response, "\n")
 		fmt.Fprintf(response, ra.rateTightLoop.Sprintf("%-28s (iterations/s):\n%v\n", "%-28sNo data in the last %d seconds\n", "%8d ", 16, 1, false))
 		fmt.Fprintf(response, "\n")
-		fmt.Fprintf(response, ra.latencyStats.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
-		fmt.Fprintf(response, "\n")
 		fmt.Fprintf(response, ra.latencyQuery.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
+		fmt.Fprintf(response, "\n")
+		fmt.Fprintf(response, ra.latencyStats.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
 		fmt.Fprintf(response, "\n")
 		var memStats runtime.MemStats
 		runtime.ReadMemStats(&memStats)
