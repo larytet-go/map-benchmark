@@ -36,6 +36,8 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 	timestamp := time.Now()
 	urlPath := strings.ToLower(request.URL.Path[1:])
 	switch urlPath {
+
+	// curl "http://localhost:8081/query?key=magic"
 	case "query":
 		ra.rateQuery.Add(1)
 		key := request.URL.Query().Get("key")
@@ -49,22 +51,7 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 		latency := time.Since(timestamp)
 		ra.latencyQuery.Add(uint64(latency))
 
-	case "sample":
-		count := 1
-		countParam := request.URL.Query().Get("count")
-		if countParam != "" {
-			count, _ = strconv.Atoi(countParam)
-		}
-		ra.bigMap.Range(func(key, value interface{}) bool {
-			fmt.Fprintf(response, "%v\n", key)
-			count--
-			if count > 0 {
-				return true
-			}
-			return false
-		})
-
-		// Try	while [ 1 ];do echo -en "\\033[0;0H";curl http://127.0.0.1:8081/stat;sleep 0.3;done;
+	// Try	while [ 1 ];do echo -en "\\033[0;0H";curl http://127.0.0.1:8081/stat;sleep 0.3;done;
 	case "statistics", "", "stat":
 		ra.rateStats.Add(1)
 		fmt.Fprintf(response, goutils.SprintfStructure(ra.statistics, 5, "%-20s %14v ", []string{}))
@@ -84,7 +71,25 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 		fmt.Fprintf(response, "Alloc = %v MiB", bToMb(memStats.Alloc))
 		latency := time.Since(timestamp)
 		ra.latencyStats.Add(uint64(latency))
+
+	// curl "http://localhost:8081/sample?count=2"
+	case "sample":
+		count := 1
+		countParam := request.URL.Query().Get("count")
+		if countParam != "" {
+			count, _ = strconv.Atoi(countParam)
+		}
+		ra.bigMap.Range(func(key, value interface{}) bool {
+			fmt.Fprintf(response, "%v\n", key)
+			count--
+			if count > 0 {
+				return true
+			}
+			return false
+		})
+
 	}
+
 }
 
 func bToMb(b uint64) uint64 {
@@ -122,37 +127,16 @@ func populateMap(bigMap *syncmap.Map, count int) {
 	}
 }
 
-func main() {
-
-	params, err := getParams()
-	if err != nil {
-		glog.Errorf("Failed to parse command line arguments %v", err)
-		return
-	}
-	ra := restAPI{
-		params:        params,
-		bigMap:        &syncmap.Map{},
-		rateQuery:     accumulator.New("rateQuery", 60),
-		rateStats:     accumulator.New("rateStats", 60),
-		rateTightLoop: accumulator.New("rateTightLoop", 60),
-		latencyQuery:  accumulator.New("latencyQuery", 60),
-		latencyStats:  accumulator.New("latencyStats", 60),
-	}
-
+func startTimersAndFriends(ra *restAPI) {
 	go func() {
-		glog.Infof("Populating map %d entries", params.bigMapSize)
-		populateMap(ra.bigMap, params.bigMapSize)
+		glog.Infof("Populating map %d entries", ra.params.bigMapSize)
+		populateMap(ra.bigMap, ra.params.bigMapSize)
 		glog.Infof("Map populated")
 		for {
 			ra.rateTightLoop.Add(1)
 			time.Sleep(1 * time.Microsecond)
 		}
 	}()
-
-	srv := &http.Server{
-		Addr:    params.listenAddress,
-		Handler: &ra,
-	}
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
 		for {
@@ -174,10 +158,36 @@ func main() {
 		}
 	}()
 
+}
+
+func main() {
+
+	params, err := getParams()
+	if err != nil {
+		glog.Errorf("Failed to parse command line arguments %v", err)
+		return
+	}
+	ra := restAPI{
+		params:        params,
+		bigMap:        &syncmap.Map{},
+		rateQuery:     accumulator.New("rateQuery", 60),
+		rateStats:     accumulator.New("rateStats", 60),
+		rateTightLoop: accumulator.New("rateTightLoop", 60),
+		latencyQuery:  accumulator.New("latencyQuery", 60),
+		latencyStats:  accumulator.New("latencyStats", 60),
+	}
+
+	startTimersAndFriends(&ra)
+
+	srv := &http.Server{
+		Addr:    params.listenAddress,
+		Handler: &ra,
+	}
+
 	go func() {
+		glog.Infof("Listen on interface %s", srv.Addr)
 		glog.Fatal(srv.ListenAndServe().Error())
 	}()
-	glog.Infof("Listen on interface %s", srv.Addr)
 
 	for {
 		time.Sleep(10 * time.Millisecond)
