@@ -66,6 +66,17 @@ func (ra *restAPI) serveHTTPSample(response http.ResponseWriter, request *http.R
 	})
 }
 
+func (ra *restAPI) serveHTTPQuery(response http.ResponseWriter, request *http.Request) {
+	key := request.URL.Query().Get("key")
+	if key != "" {
+		if valueIfc, ok := ra.bigMap.Load(key); ok {
+			fmt.Fprintf(response, "%v\n", valueIfc)
+		} else {
+			fmt.Fprintf(response, "%v is not found\n", key)
+		}
+	}
+}
+
 func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	timestamp := time.Now()
 	urlPath := strings.ToLower(request.URL.Path[1:])
@@ -74,14 +85,7 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 	// curl "http://localhost:8081/query?key=magic"
 	case "query":
 		ra.rateQuery.Add(1)
-		key := request.URL.Query().Get("key")
-		if key != "" {
-			if valueIfc, ok := ra.bigMap.Load(key); ok {
-				fmt.Fprintf(response, "%v\n", valueIfc)
-			} else {
-				fmt.Fprintf(response, "%v is not found\n", key)
-			}
-		}
+		ra.serveHTTPQuery(response, request)
 		latency := time.Since(timestamp)
 		ra.latencyQuery.Add(uint64(latency))
 
