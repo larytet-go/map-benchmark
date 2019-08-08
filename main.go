@@ -23,7 +23,8 @@ type restAPI struct {
 	rateQuery     *accumulator.Accumulator
 	rateStats     *accumulator.Accumulator
 	rateTightLoop *accumulator.Accumulator
-	latency       *accumulator.Accumulator
+	latencyQuery  *accumulator.Accumulator
+	latencyStats  *accumulator.Accumulator
 	statistics    struct {
 		timer100ms uint64
 		tick1s     uint64
@@ -45,6 +46,9 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 				fmt.Fprintf(response, "%v is not found\n", key)
 			}
 		}
+		latency := time.Since(timestamp)
+		ra.latencyQuery.Add(uint64(latency))
+
 	case "sample":
 		count := 1
 		countParam := request.URL.Query().Get("count")
@@ -71,15 +75,16 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 		fmt.Fprintf(response, "\n")
 		fmt.Fprintf(response, ra.rateTightLoop.Sprintf("%-28s (iterations/s):\n%v\n", "%-28sNo data in the last %d seconds\n", "%8d ", 16, 1, false))
 		fmt.Fprintf(response, "\n")
-		fmt.Fprintf(response, ra.latency.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
+		fmt.Fprintf(response, ra.latencyStats.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
+		fmt.Fprintf(response, "\n")
+		fmt.Fprintf(response, ra.latencyQuery.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
 		fmt.Fprintf(response, "\n")
 		var memStats runtime.MemStats
 		runtime.ReadMemStats(&memStats)
 		fmt.Fprintf(response, "Alloc = %v MiB", bToMb(memStats.Alloc))
-
+		latency := time.Since(timestamp)
+		ra.latencyStats.Add(uint64(latency))
 	}
-	latency := time.Since(timestamp)
-	ra.latency.Add(uint64(latency))
 }
 
 func bToMb(b uint64) uint64 {
@@ -130,7 +135,8 @@ func main() {
 		rateQuery:     accumulator.New("rateQuery", 60),
 		rateStats:     accumulator.New("rateStats", 60),
 		rateTightLoop: accumulator.New("rateTightLoop", 60),
-		latency:       accumulator.New("latency", 60),
+		latencyQuery:  accumulator.New("latencyQuery", 60),
+		latencyStats:  accumulator.New("latencyStats", 60),
 	}
 
 	go func() {
@@ -151,7 +157,8 @@ func main() {
 		ticker := time.NewTicker(1 * time.Second)
 		for {
 			<-ticker.C
-			ra.latency.Tick()
+			ra.latencyQuery.Tick()
+			ra.latencyStats.Tick()
 			ra.rateQuery.Tick()
 			ra.rateStats.Tick()
 			ra.rateTightLoop.Tick()
