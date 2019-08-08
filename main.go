@@ -143,6 +143,7 @@ func startTimersAndFriends(ra *restAPI) {
 			time.Sleep(1 * time.Microsecond)
 		}
 	}()
+
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
 		for {
@@ -172,6 +173,7 @@ func main() {
 		glog.Errorf("Failed to parse command line arguments %v", err)
 		return
 	}
+
 	ra := restAPI{
 		params:        params,
 		bigMap:        &syncmap.Map{},
