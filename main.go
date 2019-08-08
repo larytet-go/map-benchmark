@@ -170,11 +170,11 @@ func main() {
 	ra := restAPI{
 		params:        params,
 		bigMap:        &syncmap.Map{},
-		rateQuery:     accumulator.New("rateQuery", 60),
-		rateStats:     accumulator.New("rateStats", 60),
-		rateTightLoop: accumulator.New("rateTightLoop", 60),
-		latencyQuery:  accumulator.New("latencyQuery", 60),
-		latencyStats:  accumulator.New("latencyStats", 60),
+		rateQuery:     accumulator.New("rateQuery", 90),
+		rateStats:     accumulator.New("rateStats", 90),
+		rateTightLoop: accumulator.New("rateTightLoop", 90),
+		latencyQuery:  accumulator.New("latencyQuery", 90),
+		latencyStats:  accumulator.New("latencyStats", 90),
 	}
 
 	startTimersAndFriends(&ra)
