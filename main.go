@@ -13,14 +13,20 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/larytet-go/accumulator"
+	goutils "gitlab-il.cyren.io/ccs/go-utils"
 	"golang.org/x/sync/syncmap"
 )
 
 type restAPI struct {
-	params  systemParams
-	bigMap  *syncmap.Map
-	rate    *accumulator.Accumulator
-	latency *accumulator.Accumulator
+	params     systemParams
+	bigMap     *syncmap.Map
+	rate       *accumulator.Accumulator
+	latency    *accumulator.Accumulator
+	statistics struct {
+		timer100ms uint64
+		tick1s     uint64
+		sleep100ms uint64
+	}
 }
 
 func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request) {
@@ -54,6 +60,7 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 
 		// Try	while [ 1 ];do echo -en "\\033[0;0H";curl http://127.0.0.1:8081/stat;sleep 0.3;done;
 	case "statistics", "", "stat":
+		fmt.Fprintf(response, goutils.SprintfStructure(ra.statistics, 5, "%-20s %14v ", []string{}))
 		fmt.Fprintf(response, "\n")
 		fmt.Fprintf(response, ra.rate.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
 		fmt.Fprintf(response, "\n")
@@ -132,12 +139,25 @@ func main() {
 			<-ticker.C
 			ra.latency.Tick()
 			ra.rate.Tick()
+			ra.statistics.tick1s++
 		}
 	}()
+
+	go func() {
+		for {
+			timer100ms := time.NewTimer(100 * time.Millisecond)
+			<-timer100ms.C
+			ra.statistics.timer100ms++
+		}
+	}()
+
 	go func() {
 		glog.Fatal(srv.ListenAndServe().Error())
 	}()
 	glog.Infof("Listen on interface %s", srv.Addr)
-	readCh := make(chan bool)
-	<-readCh
+
+	for {
+		time.Sleep(100 * time.Millisecond)
+		ra.statistics.sleep100ms++
+	}
 }
