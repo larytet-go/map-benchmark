@@ -95,10 +95,10 @@ func getParams() (systemParams, error) {
 func populateMap(bigMap *syncmap.Map, count int) {
 	bigMap.Store("magic", "key")
 	for i := 0; i < count; i++ {
-		key := fmt.Sprintf("%d", rand.Uint64())
-		value := bytes.NewBufferString(key)
-		// Force the compiler to allocate data
 		// I could do faster with []byte instead of String
+		key := strconv.FormatUint(rand.Uint64(), 16)
+		// Force the compiler to allocate data
+		value := bytes.NewBufferString(key)
 		bigMap.Store(key, value.Bytes())
 	}
 }
