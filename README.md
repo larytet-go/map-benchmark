@@ -11,6 +11,8 @@ In a separate terminal
 
     while [ 1 ];do echo -en "\\033[0;0H";curl http://127.0.0.1:8081/stat;sleep 0.3;done;
 
+Wait a few minutes. See the HTTP serevr stalls for ~4 seconds
+
 My machine 
 
     $ go version
