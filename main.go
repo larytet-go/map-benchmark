@@ -68,7 +68,7 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 		fmt.Fprintf(response, "\n")
 		var memStats runtime.MemStats
 		runtime.ReadMemStats(&memStats)
-		fmt.Fprintf(response, "Alloc = %v MiB", bToMb(memStats.Alloc))
+		fmt.Fprintf(response, "Alloc = %v MiB", memStats.Alloc/(1024*1024))
 		latency := time.Since(timestamp)
 		ra.latencyStats.Add(uint64(latency))
 
@@ -90,10 +90,6 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 
 	}
 
-}
-
-func bToMb(b uint64) uint64 {
-	return b / 1024 / 1024
 }
 
 type systemParams struct {
