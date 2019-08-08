@@ -32,6 +32,40 @@ type restAPI struct {
 	}
 }
 
+func (ra *restAPI) serveHTTPStats(response http.ResponseWriter) {
+	fmt.Fprintf(response, goutils.SprintfStructure(ra.statistics, 5, "%-20s %14v ", []string{}))
+	fmt.Fprintf(response, "\n")
+	fmt.Fprintf(response, ra.rateQuery.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
+	fmt.Fprintf(response, "\n")
+	fmt.Fprintf(response, ra.rateStats.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
+	fmt.Fprintf(response, "\n")
+	fmt.Fprintf(response, ra.rateTightLoop.Sprintf("%-28s (iterations/s):\n%v\n", "%-28sNo data in the last %d seconds\n", "%8d ", 16, 1, false))
+	fmt.Fprintf(response, "\n")
+	fmt.Fprintf(response, ra.latencyQuery.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
+	fmt.Fprintf(response, "\n")
+	fmt.Fprintf(response, ra.latencyStats.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
+	fmt.Fprintf(response, "\n")
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	fmt.Fprintf(response, "Alloc = %v MiB", memStats.Alloc/(1024*1024))
+}
+
+func (ra *restAPI) serveHTTPSample(response http.ResponseWriter, request *http.Request) {
+	count := 1
+	countParam := request.URL.Query().Get("count")
+	if countParam != "" {
+		count, _ = strconv.Atoi(countParam)
+	}
+	ra.bigMap.Range(func(key, value interface{}) bool {
+		fmt.Fprintf(response, "%v\n", key)
+		count--
+		if count > 0 {
+			return true
+		}
+		return false
+	})
+}
+
 func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	timestamp := time.Now()
 	urlPath := strings.ToLower(request.URL.Path[1:])
@@ -54,40 +88,13 @@ func (ra *restAPI) ServeHTTP(response http.ResponseWriter, request *http.Request
 	// Try	while [ 1 ];do echo -en "\\033[0;0H";curl http://127.0.0.1:8081/stat;sleep 0.3;done;
 	case "statistics", "", "stat":
 		ra.rateStats.Add(1)
-		fmt.Fprintf(response, goutils.SprintfStructure(ra.statistics, 5, "%-20s %14v ", []string{}))
-		fmt.Fprintf(response, "\n")
-		fmt.Fprintf(response, ra.rateQuery.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
-		fmt.Fprintf(response, "\n")
-		fmt.Fprintf(response, ra.rateStats.Sprintf("%-28s (requests/s):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, 1, false))
-		fmt.Fprintf(response, "\n")
-		fmt.Fprintf(response, ra.rateTightLoop.Sprintf("%-28s (iterations/s):\n%v\n", "%-28sNo data in the last %d seconds\n", "%8d ", 16, 1, false))
-		fmt.Fprintf(response, "\n")
-		fmt.Fprintf(response, ra.latencyQuery.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
-		fmt.Fprintf(response, "\n")
-		fmt.Fprintf(response, ra.latencyStats.Sprintf("%-28s (microseconds):\n%v\n", "%-28sNo requests in the last %d seconds\n", "%8d ", 16, uint64(time.Microsecond), true))
-		fmt.Fprintf(response, "\n")
-		var memStats runtime.MemStats
-		runtime.ReadMemStats(&memStats)
-		fmt.Fprintf(response, "Alloc = %v MiB", memStats.Alloc/(1024*1024))
+		ra.serveHTTPStats(response)
 		latency := time.Since(timestamp)
 		ra.latencyStats.Add(uint64(latency))
 
 	// curl "http://localhost:8081/sample?count=2"
 	case "sample":
-		count := 1
-		countParam := request.URL.Query().Get("count")
-		if countParam != "" {
-			count, _ = strconv.Atoi(countParam)
-		}
-		ra.bigMap.Range(func(key, value interface{}) bool {
-			fmt.Fprintf(response, "%v\n", key)
-			count--
-			if count > 0 {
-				return true
-			}
-			return false
-		})
-
+		ra.serveHTTPSample(response, request)
 	}
 
 }
